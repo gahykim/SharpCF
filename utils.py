@@ -36,7 +36,7 @@ def make_train_test_dataset(df):
     train_df, test_df = train_test_split(positive_interaction, test_size = 0.3, random_state = 42)
     return train_df, test_df
 
-def train(current_epoch, model, train_loader, optimizer, criterion_bpr, criterion_trj, train_cache_pos_scores, opt):
+def train_model(current_epoch, model, train_loader, optimizer, criterion_bpr, criterion_trj, train_cache_pos_scores, opt):
     model.train()
     train_loss = 0
     train_cache_pos_scores[current_epoch] = []
@@ -44,7 +44,7 @@ def train(current_epoch, model, train_loader, optimizer, criterion_bpr, criterio
         optimizer.zero_grad()
         pos_score, neg_score = model(users, pos_items, neg_items)
 
-        if current_epoch > opt.start_epoch:
+        if current_epoch > opt.start_epoch or opt.trajectory_loss == False:
             bpr_loss, before_pos_score = criterion_bpr(pos_score, neg_score)
             train_cache_pos_scores[current_epoch].append(before_pos_score)
 
@@ -57,17 +57,18 @@ def train(current_epoch, model, train_loader, optimizer, criterion_bpr, criterio
 
         loss.backward(retain_graph=True)
         optimizer.step()
+        optimizer.zero_grad()
         train_loss +=loss.item()
     return train_loss / len(train_loader), train_cache_pos_scores
 
-def evaluate(current_epoch, model, test_loader, criterion_bpr, criterion_trj, test_cache_pos_scores, opt):
+def evaluate_model(current_epoch, model, test_loader, criterion_bpr, criterion_trj, test_cache_pos_scores, opt):
     model.eval()
     test_loss = 0
     test_cache_pos_scores[current_epoch] = []
     with torch.no_grad():
         for idx,(users, pos_items, neg_items) in enumerate(test_loader):
             pos_score, neg_score = model(users, pos_items, neg_items)
-            if current_epoch > opt.start_epoch:
+            if current_epoch > opt.start_epoch or opt.trajectory_loss == False:
                 bpr_loss, before_pos_score = criterion_bpr(pos_score, neg_score)
                 test_cache_pos_scores[current_epoch].append(before_pos_score)
 

@@ -3,16 +3,17 @@ import time
 from torch.utils.data import DataLoader
 import torch
 from dataloader import MovielensDataset
-from utils import merge_movielens_data, make_index, make_train_test_dataset, train,evaluate
+from utils import *
 from model import MF, BPRLoss, trajectoryLoss
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--total_epoch", type = int, default = 10, help = "the total number of epoch to train")
-parser.add_argument("--start_epoch", type = int, default = 2, help = "first epochs to warm up BPR")
-parser.add_argument("--epoch_window", type = int, default = 1, help = "epoch window")
+parser.add_argument("--total_epoch", type = int, default = 100, help = "the total number of epoch to train")
+parser.add_argument("--start_epoch", type = int, default = 20, help = "first epochs to warm up BPR")
+parser.add_argument("--epoch_window", type = int, default = 3, help = "epoch window")
 parser.add_argument("--batch_size", type = int, default = 64, help = "size of batch in dataloader")
 parser.add_argument("--lamda", type = float, default = 0.1, help = "coefficient lambda in loss function")
 parser.add_argument("--embed_dim", type = int, default=128, help = "Embedding dimensions of users and items")
+parser.add_argument("--trajectory_loss", type = bool, default = True, help = "Turn on and off the trajectory loss")
 parser.add_argument("--top_k", type = int, default = 10, help = "number of k items to measure metric in evaluation")
 opt = parser.parse_args()
 print(opt)
@@ -41,13 +42,11 @@ optimizer = torch.optim.SGD(model.parameters(), lr = 1e-3)
 train_cache_pos_scores = {}
 test_cache_pos_scores = {}
 for epoch in range(opt.total_epoch):
-    print("Start Training...")
-    train_loss, cache_pos_scores = train(epoch, model, train_loader, optimizer, criterion_bpr, criterion_trj, train_cache_pos_scores, opt)
-    print(len(train_cache_pos_scores))
-    print("Start Evaluating...")
-    test_loss, test_cache_pos_scores = evaluate(epoch, model, test_loader, criterion_bpr, criterion_trj, test_cache_pos_scores, opt)
-    print(len(test_cache_pos_scores))
+    train_loss, cache_pos_scores = train_model(epoch, model, train_loader, optimizer, criterion_bpr, criterion_trj, train_cache_pos_scores, opt)
+    test_loss, test_cache_pos_scores = evaluate_model(epoch, model, test_loader, criterion_bpr, criterion_trj, test_cache_pos_scores, opt)
     print(f"Epoch {epoch + 1}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}")
+torch.save(model, f"./tj_loss_{opt.trajectory_loss}")
+
 
 
 
